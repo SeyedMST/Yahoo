@@ -240,13 +240,13 @@ def wikiQaGenerate(filename, label_vocab, word_vocab, char_vocab, max_sent_lengt
             line = line.strip()
         #if line.startswith('-'): continue
         item = re.split("\t", line)
-        question_dic.setdefault(item[0].lower(),{})
-        question_dic[item[0].lower()].setdefault("question",[])
-        question_dic[item[0].lower()].setdefault("answer",[])
-        question_dic[item[0].lower()].setdefault("label",[])
-        question_dic[item[0].lower()]["question"].append(item[0].lower())
-        question_dic[item[0].lower()]["answer"].append(item[1].lower())
-        question_dic[item[0].lower()]["label"].append(int(item[2]))
+        question_dic.setdefault(str(item[0]),{})
+        question_dic[str(item[0])].setdefault("question",[])
+        question_dic[str(item[0])].setdefault("answer",[])
+        question_dic[str(item[0])].setdefault("label",[])
+        question_dic[str(item[0])]["question"].append(item[0].lower())
+        question_dic[str(item[0])]["answer"].append(item[1].lower())
+        question_dic[str(item[0])]["label"].append(int(item[2]))
         if int(item[2]) == 0:
             negative_answers.append(item[1].lower())
         all_count += 1
@@ -278,6 +278,7 @@ def wikiQaGenerate(filename, label_vocab, word_vocab, char_vocab, max_sent_lengt
     pos_neg_pair_count = 0
     total_pair_count = 0
     sum_bikhod_added = 0
+    pos_count_list = []
     if add_neg_sample_count == True:
         for item in question_dic.values():
             temp_answer = item["answer"]
@@ -295,6 +296,7 @@ def wikiQaGenerate(filename, label_vocab, word_vocab, char_vocab, max_sent_lengt
         for item in question_dic.values():
             good_answer = [item["answer"][i] for i in range(len(item["question"])) if item["label"][i] == 1]
             good_length = len(good_answer)
+            pos_count_list.append(good_length)
             bad_answer = [item["answer"][i] for i in range(len(item["question"])) if item["label"][i] == 0]
             pos_neg_pair_count += good_length * len (bad_answer)
             total_pair_count += good_length + len(bad_answer)
@@ -354,6 +356,7 @@ def wikiQaGenerate(filename, label_vocab, word_vocab, char_vocab, max_sent_lengt
     random.shuffle(instances)  # random works inplace and returns None
 
     #instances = sorted(instances, key=lambda instance: (len(instance[1]))) #sort based on len (answer[i])
+    pos_count_list = sorted(pos_count_list, reverse=True)
     if is_training == True:
         batches = make_batches_as(instances, batch_size, max_answer_size, is_training, equal_box_per_batch)
     else:
@@ -657,24 +660,24 @@ class SentenceMatchDataStream(object):
             # padding
             max_sent1_length = np.max(sent1_length_batch)
             max_sent2_length = np.max(sent2_length_batch)
-            #max_char_length1 = np.max([np.max(aa) for aa in sent1_char_length_batch])
-            #if max_char_length1>max_char_per_word: max_char_length1=max_char_per_word
+            max_char_length1 = np.max([np.max(aa) for aa in sent1_char_length_batch])
+            if max_char_length1>max_char_per_word: max_char_length1=max_char_per_word
 
-            #max_char_length2 = np.max([np.max(aa) for aa in sent2_char_length_batch])
-            #if max_char_length2>max_char_per_word: max_char_length2=max_char_per_word
+            max_char_length2 = np.max([np.max(aa) for aa in sent2_char_length_batch])
+            if max_char_length2>max_char_per_word: max_char_length2=max_char_per_word
             
             label_id_batch = np.array(label_id_batch)
             word_idx_1_batch = pad_2d_matrix(word_idx_1_batch, max_length=max_sent1_length)
             word_idx_2_batch = pad_2d_matrix(word_idx_2_batch, max_length=max_sent2_length)
 
-            #char_matrix_idx_1_batch = pad_3d_tensor(char_matrix_idx_1_batch, max_length1=max_sent1_length, max_length2=max_char_length1)
-            #char_matrix_idx_2_batch = pad_3d_tensor(char_matrix_idx_2_batch, max_length1=max_sent2_length, max_length2=max_char_length2)
+            char_matrix_idx_1_batch = pad_3d_tensor(char_matrix_idx_1_batch, max_length1=max_sent1_length, max_length2=max_char_length1)
+            char_matrix_idx_2_batch = pad_3d_tensor(char_matrix_idx_2_batch, max_length1=max_sent2_length, max_length2=max_char_length2)
 
             sent1_length_batch = np.array(sent1_length_batch)
             sent2_length_batch = np.array(sent2_length_batch)
 
-            #sent1_char_length_batch = pad_2d_matrix(sent1_char_length_batch, max_length=max_sent1_length)
-            #sent2_char_length_batch = pad_2d_matrix(sent2_char_length_batch, max_length=max_sent2_length)
+            sent1_char_length_batch = pad_2d_matrix(sent1_char_length_batch, max_length=max_sent1_length)
+            sent2_char_length_batch = pad_2d_matrix(sent2_char_length_batch, max_length=max_sent2_length)
 
             overlap_batch = pad_3d_tensor(overlap_batch, max_length1=max_sent1_length, max_length2=max_sent2_length)
 
